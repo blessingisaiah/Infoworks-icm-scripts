@@ -1,0 +1,8 @@
+This folder contains Ruby scripts used to validate the InfoWorks ICM model data.
+
+Current scripts:
+- `duplicate_manholes.rb` → Checks for duplicate node IDs
+- `duplicate_pipes.rb` → Checks for duplicate conduit IDs
+
+Usage:
+Copy and run these scripts in InfoWorks ICM Script Editor to verify model integrity.
