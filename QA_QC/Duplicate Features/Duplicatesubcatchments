@@ -1,0 +1,65 @@
+# =================================================================
+# InfoWorks ICM Ruby Script – QA/QC
+# Purpose: Duplicate Subcatchments Based on Centroid Coordinates
+# Author: Blessing Isaiah
+# Date: 2026-01-19
+# ICM Version: 2024.5
+# ==================================================================
+
+require 'time'  # For timestamp formatting
+
+net = WSApplication.current_network
+subs = net.row_objects('hw_subcatchment')
+
+TOL_XY = 0.01  # metres
+
+# Hash to group subcatchments by rounded centroid coordinates
+centroid_hash = {}
+
+subs.each do |sc|
+  x = sc['x']
+  y = sc['y']
+  next if x.nil? || y.nil?
+
+  key = [
+    (x / TOL_XY).round,
+    (y / TOL_XY).round
+  ]
+
+  centroid_hash[key] ||= []
+  centroid_hash[key] << sc
+end
+
+# Output duplicate centroid groups
+puts "Duplicate Subcatchments Based on Centroid Coordinates"
+puts "-----------------------------------------------------"
+
+total_duplicate_subcatchments = 0
+duplicate_group_count = 0
+
+centroid_hash.each do |key, list|
+  next if list.size < 2  # Only groups with duplicates
+
+  duplicate_group_count += 1
+  duplicates_in_group = list.size - 1
+  total_duplicate_subcatchments += duplicates_in_group
+
+  puts "Centroid group #{key} has #{list.size} subcatchments (Duplicates: #{duplicates_in_group}):"
+  list.each_with_index do |sc, index|
+    puts "  #{index + 1}. #{sc['subcatchment_id']}"
+  end
+  puts "----"
+end
+
+puts "\nTotal duplicate centroid groups: #{duplicate_group_count}"
+puts "Total duplicate subcatchments: #{total_duplicate_subcatchments}"
+
+# ============================================================
+# Final Completion Message with Timestamp
+# ============================================================
+current_time = Time.now.strftime("%Y-%m-%d %H:%M:%S")
+puts "\n======================================================"
+puts "Processing complete. Outputs generated successfully."
+puts "Run timestamp: #{current_time}"
+puts "Developed by Blessing Isaiah"
+puts "========================================================"
