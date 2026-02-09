@@ -1,0 +1,85 @@
+# ============================================================
+# InfoWorks ICM Ruby Script – Flood Results Extraction
+# ============================================================
+# Purpose: Summarise flooded manholes by catchment:
+#   - Count of flooded manholes
+#   - Total flood volume
+#   - Maximum single manhole flood volume
+#
+# Logic:
+#   - Uses selected manholes only if any are selected
+#   - Applies flood depth threshold of 0.05 m
+#
+# Author: Blessing Isaiah
+# Date: 2026-01-06
+# ICM Version: 2025.x
+# ============================================================
+
+require 'time'  # For timestamp formatting
+
+net = WSApplication.current_network
+raise 'No network open' if net.nil?
+
+summary = {}
+
+nodes = net.row_objects('hw_node')
+
+# Check if any manholes are selected
+use_selected_only = nodes.any? { |n| n.selected? && n.node_type == 'Manhole' }
+
+nodes.each do |node|
+
+  # Manholes ONLY
+  next unless node.node_type == 'Manhole'
+
+  # If some manholes are selected, process only selected ones
+  next if use_selected_only && !node.selected?
+
+  catchment = node.user_text_3
+  next if catchment.nil? || catchment.strip.empty?
+
+  flood_depth = node.results('FloodDepth')&.max
+  next if flood_depth.nil? || flood_depth <= 0.05
+
+  flood_volume = node.results('FloodVolume')&.max || 0.0
+
+  # Initialise catchment entry
+  summary[catchment] ||= {
+    count: 0,
+    total_volume: 0.0,
+    max_volume: nil
+  }
+
+  # Increment flooded manhole count
+  summary[catchment][:count] += 1
+
+  # SUM of max flood volumes
+  summary[catchment][:total_volume] += flood_volume
+
+  # Track MAX flood volume (single worst manhole)
+  current_max = summary[catchment][:max_volume]
+  summary[catchment][:max_volume] =
+    current_max.nil? ? flood_volume : [current_max, flood_volume].max
+end
+# ============================================================
+# Output summary
+puts "\nCatchment, Flooded_Manholes_Count, Total_Flood_Volume_m3, Max_Flood_Volume_m3"
+puts #"-------------------------------------------------------"
+
+if summary.empty?
+  puts "No flooded manholes found based on the applied criteria."
+else
+  summary.each do |catchment, data|
+    puts "#{catchment}, #{data[:count]}, #{data[:total_volume].round(2)}, #{data[:max_volume].round(2)}"
+  end
+end
+
+# ============================================================
+# Final Completion Message with Timestamp
+# ============================================================
+current_time = Time.now.strftime("%Y-%m-%d %H:%M:%S")
+puts "\n==============================================="
+puts "Processing complete. Outputs generated successfully."
+puts "Run timestamp: #{current_time}"
+puts "Developed by Blessing Isaiah"
+puts "==============================================="
